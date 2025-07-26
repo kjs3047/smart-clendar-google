@@ -1,0 +1,5 @@
+{
+  "name": "Smart Calendar",
+  "description": "A smart calendar application to manage events, tasks, and schedules with a clean and intuitive interface. Features include monthly views, event creation and management, category customization, and a Kanban board for tasks.",
+  "requestFramePermissions": []
+}
