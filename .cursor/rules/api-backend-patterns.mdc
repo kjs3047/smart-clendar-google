@@ -1,0 +1,433 @@
+# API & Backend Patterns
+
+## 🏗️ SERVER ARCHITECTURE
+
+### Express Server Structure
+
+Reference: [server/src/index.ts](mdc:server/src/index.ts)
+
+**ALWAYS** follow this structure:
+
+```typescript
+import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from "express";
+import cors from "cors";
+import cookieSession from "cookie-session";
+import dotenv from "dotenv";
+import { prisma } from "./db";
+
+// Environment configuration
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware setup
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(
+  cookieSession({
+    name: "session",
+    keys: [process.env.COOKIE_SESSION_SECRET || "super-secret-key-please-change"],
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+  })
+);
+
+// Router setup
+const apiV1Router = express.Router();
+apiV1Router.use(ensureAuthenticated);
+app.use("/api/v1", apiV1Router);
+```
+
+## 🔐 AUTHENTICATION PATTERNS
+
+### Custom Request Interface
+
+**ALWAYS** define custom request interface for authenticated routes:
+
+```typescript
+interface AuthRequest extends ExpressRequest {
+  userId?: string;
+  session: {
+    userId?: string;
+    frontendOrigin?: string;
+  } | null;
+}
+```
+
+### Authentication Middleware
+
+**ALWAYS** use this pattern for protected routes:
+
+```typescript
+const ensureAuthenticated = (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+  const authReq = req as AuthRequest;
+  if (!authReq.session?.userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  authReq.userId = authReq.session.userId;
+  next();
+};
+
+// Apply to router
+apiV1Router.use(ensureAuthenticated);
+```
+
+### Google OAuth Implementation
+
+**ALWAYS** follow this pattern for OAuth routes:
+
+```typescript
+// OAuth initiation
+app.get("/api/auth/google", (req: ExpressRequest, res: ExpressResponse) => {
+  const authReq = req as AuthRequest;
+  const referer = req.get("Referer");
+
+  if (authReq.session && referer) {
+    try {
+      const refererUrl = new URL(referer);
+      authReq.session.frontendOrigin = refererUrl.origin;
+    } catch (e) {
+      console.warn("Could not parse Referer URL:", referer);
+    }
+  }
+
+  const authorizeUrl = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: ["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
+    prompt: "consent",
+  });
+  res.redirect(authorizeUrl);
+});
+
+// OAuth callback
+app.get("/api/auth/google/callback", async (req: ExpressRequest, res: ExpressResponse) => {
+  const authReq = req as AuthRequest;
+  const redirectUrl = authReq.session?.frontendOrigin || FRONTEND_URL;
+
+  try {
+    const { code } = req.query;
+    if (!code) {
+      return res.redirect(`${redirectUrl}?error=auth_failed&message=Missing_authorization_code`);
+    }
+
+    // Process OAuth token and user creation
+    const { tokens } = await oauth2Client.getToken(code as string);
+    // ... user creation logic
+
+    if (authReq.session) {
+      authReq.session.userId = user.id;
+    }
+    res.redirect(redirectUrl);
+  } catch (error) {
+    console.error("Google Auth Callback Error:", error);
+    res.redirect(`${redirectUrl}?error=auth_failed`);
+  }
+});
+```
+
+## 📊 API ROUTE PATTERNS
+
+### RESTful API Structure
+
+**ALWAYS** follow RESTful conventions:
+
+```typescript
+// GET - Retrieve resources
+apiV1Router.get("/events", async (req: ExpressRequest, res: ExpressResponse) => {
+  const { userId } = req as AuthRequest;
+  const events = await prisma.event.findMany({
+    where: { userId: userId! },
+    orderBy: { date: "asc" },
+  });
+  res.json(events.map((e) => ({ ...e, date: e.date.toISOString().split("T")[0] })));
+});
+
+// POST - Create new resource
+apiV1Router.post("/events", async (req: ExpressRequest, res: ExpressResponse) => {
+  const { date, categoryId, subCategoryId, ...eventData } = req.body;
+  const { userId } = req as AuthRequest;
+
+  // Validation
+  const category = await prisma.category.findFirst({ where: { id: categoryId, userId: userId! } });
+  if (!category) {
+    return res.status(400).json({ message: "Invalid category provided." });
+  }
+
+  const newEvent = await prisma.event.create({
+    data: {
+      ...eventData,
+      categoryId,
+      subCategoryId,
+      date: new Date(date),
+      userId: userId!,
+    },
+  });
+  res.status(201).json({ ...newEvent, date: newEvent.date.toISOString().split("T")[0] });
+});
+
+// PUT - Update existing resource
+apiV1Router.put("/events/:id", async (req: ExpressRequest, res: ExpressResponse) => {
+  const { id } = req.params;
+  const { date, categoryId, subCategoryId, ...eventData } = req.body;
+  const { userId } = req as AuthRequest;
+
+  try {
+    const existingEvent = await prisma.event.findFirst({ where: { id, userId: userId! } });
+    if (!existingEvent) {
+      return res.status(404).json({ message: "Event not found or you don't have permission to edit it." });
+    }
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: {
+        ...eventData,
+        categoryId,
+        subCategoryId,
+        date: new Date(date),
+      },
+    });
+    res.json({ ...updatedEvent, date: updatedEvent.date.toISOString().split("T")[0] });
+  } catch (error) {
+    console.error("Error updating event:", error);
+    res.status(500).json({ message: "Failed to update event" });
+  }
+});
+
+// DELETE - Remove resource
+apiV1Router.delete("/events/:id", async (req: ExpressRequest, res: ExpressResponse) => {
+  const { id } = req.params;
+  const { userId } = req as AuthRequest;
+
+  try {
+    const result = await prisma.event.deleteMany({ where: { id, userId: userId! } });
+    if (result.count === 0) {
+      return res.status(404).json({ message: "Event not found or you don't have permission to delete it." });
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    res.status(500).json({ message: "Failed to delete event" });
+  }
+});
+```
+
+## 🗄️ DATABASE PATTERNS
+
+### Prisma Usage
+
+Reference: [server/prisma/schema.prisma](mdc:server/prisma/schema.prisma)
+
+**ALWAYS** use Prisma Client for database operations:
+
+```typescript
+// ✅ CORRECT - Use Prisma Client
+import { prisma } from "./db";
+
+// Simple queries
+const events = await prisma.event.findMany({
+  where: { userId: userId! },
+  orderBy: { date: "asc" },
+});
+
+// Complex queries with relations
+const categories = await prisma.category.findMany({
+  where: { userId: userId! },
+  include: { subCategories: true },
+  orderBy: { name: "asc" },
+});
+
+// Transactions for multiple operations
+await prisma.$transaction(async (tx) => {
+  const existingCatIds = (
+    await tx.category.findMany({
+      where: { userId: userId! },
+      select: { id: true },
+    })
+  ).map((c) => c.id);
+
+  const catsToDelete = existingCatIds.filter((id) => !clientCatIds.includes(id));
+  if (catsToDelete.length > 0) {
+    await tx.category.deleteMany({ where: { id: { in: catsToDelete }, userId: userId! } });
+  }
+
+  for (const cat of clientCategories) {
+    await tx.category.upsert({
+      where: { id: cat.id },
+      update: { name: cat.name, color: cat.color },
+      create: { id: cat.id, name: cat.name, color: cat.color, userId: userId! },
+    });
+  }
+});
+```
+
+### Data Validation Patterns
+
+**ALWAYS** validate data before database operations:
+
+```typescript
+// ✅ CORRECT - Validate input data
+const { date, categoryId, subCategoryId, ...eventData } = req.body;
+const { userId } = req as AuthRequest;
+
+// Check category ownership
+const category = await prisma.category.findFirst({
+  where: { id: categoryId, userId: userId! },
+});
+if (!category) {
+  return res.status(400).json({ message: "Invalid category provided." });
+}
+
+// Check subcategory if provided
+if (subCategoryId) {
+  const subCategory = await prisma.subCategory.findFirst({
+    where: { id: subCategoryId, categoryId },
+  });
+  if (!subCategory) {
+    return res.status(400).json({ message: "Invalid sub-category provided." });
+  }
+}
+```
+
+## 🔒 SECURITY PATTERNS
+
+### User Ownership Validation
+
+**ALWAYS** check user ownership before modifying data:
+
+```typescript
+// ✅ CORRECT - Check ownership before operations
+const existingEvent = await prisma.event.findFirst({
+  where: { id, userId: userId! },
+});
+if (!existingEvent) {
+  return res.status(404).json({
+    message: "Event not found or you don't have permission to edit it.",
+  });
+}
+```
+
+### Input Sanitization
+
+**ALWAYS** sanitize and validate user input:
+
+```typescript
+// ✅ CORRECT - Validate required fields
+if (!req.body.title || !req.body.categoryId) {
+  return res.status(400).json({ message: "Missing required fields." });
+}
+
+// ✅ CORRECT - Validate data types
+if (typeof req.body.title !== "string" || req.body.title.trim().length === 0) {
+  return res.status(400).json({ message: "Invalid title provided." });
+}
+```
+
+## 🚨 ERROR HANDLING PATTERNS
+
+### Try-Catch Blocks
+
+**ALWAYS** use try-catch for database operations:
+
+```typescript
+// ✅ CORRECT - Proper error handling
+try {
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: { ...eventData, date: new Date(date) },
+  });
+  res.json({ ...updatedEvent, date: updatedEvent.date.toISOString().split("T")[0] });
+} catch (error) {
+  console.error("Error updating event:", error);
+  res.status(500).json({ message: "Failed to update event" });
+}
+```
+
+### HTTP Status Codes
+
+**ALWAYS** use appropriate HTTP status codes:
+
+```typescript
+// 200 - Success
+res.json(data);
+
+// 201 - Created
+res.status(201).json(newResource);
+
+// 204 - No Content (for DELETE)
+res.status(204).send();
+
+// 400 - Bad Request
+res.status(400).json({ message: "Invalid input" });
+
+// 401 - Unauthorized
+res.status(401).json({ message: "Authentication required" });
+
+// 404 - Not Found
+res.status(404).json({ message: "Resource not found" });
+
+// 500 - Internal Server Error
+res.status(500).json({ message: "Internal server error" });
+```
+
+## 🚫 FORBIDDEN PATTERNS
+
+### What NOT to do in backend code:
+
+```typescript
+// ❌ WRONG - Don't use raw SQL
+const result = await db.query('SELECT * FROM events WHERE userId = $1', [userId]);
+
+// ❌ WRONG - Don't skip error handling
+const event = await prisma.event.update({ where: { id }, data: eventData });
+res.json(event);
+
+// ❌ WRONG - Don't expose internal errors
+catch (error) {
+  res.status(500).json({ error: error.message }); // WRONG!
+}
+
+// ❌ WRONG - Don't skip user ownership validation
+const event = await prisma.event.update({ where: { id }, data: eventData });
+
+// ❌ WRONG - Don't use any type
+const handleRequest = (req: any, res: any) => { // WRONG!
+
+// ❌ WRONG - Don't skip input validation
+const event = await prisma.event.create({ data: req.body });
+
+// ❌ WRONG - Don't use synchronous operations
+const fs = require('fs');
+const data = fs.readFileSync('file.txt'); // WRONG!
+```
+
+## ✅ BEST PRACTICES CHECKLIST
+
+### Before Creating/Modifying API Routes:
+
+- [ ] Define proper TypeScript interfaces
+- [ ] Implement authentication middleware
+- [ ] Validate user input
+- [ ] Check user ownership
+- [ ] Use proper HTTP status codes
+- [ ] Implement error handling
+- [ ] Use Prisma Client (no raw SQL)
+- [ ] Log errors appropriately
+- [ ] Sanitize user input
+- [ ] Test error scenarios
+
+### Security Checklist:
+
+- [ ] Authentication required for protected routes
+- [ ] User ownership validation
+- [ ] Input sanitization
+- [ ] No sensitive data in error messages
+- [ ] Proper CORS configuration
+- [ ] Secure session configuration
+- [ ] Environment variable validation
+      description:
+      globs:
+      alwaysApply: false
+
+---

@@ -1,0 +1,284 @@
+# React Component Patterns & Best Practices
+
+## 🧩 COMPONENT STRUCTURE PATTERNS
+
+### Modal Component Template
+
+**ALWAYS** follow this exact pattern for modal components:
+
+```typescript
+import React, { useState, useEffect } from "react";
+import { Dialog } from "./ui/Dialog";
+import { ComponentType } from "../types";
+
+interface ComponentNameProps {
+  isOpen: boolean;
+  onClose: () => void;
+  // Add other props as needed
+}
+
+export const ComponentName: React.FC<ComponentNameProps> = ({
+  isOpen,
+  onClose,
+  // destructure other props
+}) => {
+  // State management
+  const [localState, setLocalState] = useState("");
+
+  // Effects
+  useEffect(() => {
+    if (isOpen) {
+      // Initialize when modal opens
+    }
+  }, [isOpen]);
+
+  // Early return for closed modal
+  if (!isOpen) return null;
+
+  // Event handlers
+  const handleAction = () => {
+    // Action logic
+    onClose();
+  };
+
+  return (
+    <Dialog isOpen={isOpen} onClose={onClose} title="Component Title">
+      <div className="space-y-4">{/* Modal content */}</div>
+    </Dialog>
+  );
+};
+```
+
+## 🎯 STATE MANAGEMENT RULES
+
+### useState Patterns
+
+```typescript
+// ✅ CORRECT - Use proper typing
+const [events, setEvents] = useState<Event[]>([]);
+const [isLoading, setIsLoading] = useState<boolean>(false);
+const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+// ❌ WRONG - Don't use any
+const [data, setData] = useState<any>([]);
+```
+
+### useCallback Patterns
+
+```typescript
+// ✅ CORRECT - Use for event handlers passed as props
+const handleSaveEvent = useCallback(
+  async (event: Event) => {
+    try {
+      const savedEvent = await apiSaveEvent(event, isNew);
+      setEvents((prev) => [...prev, savedEvent]);
+    } catch (error) {
+      console.error("Failed to save event:", error);
+      alert("일정 저장에 실패했습니다.");
+    }
+  },
+  [events, isNew]
+);
+
+// ✅ CORRECT - Use for expensive operations
+const handleDeleteEvent = useCallback(async (eventId: string) => {
+  if (window.confirm("정말 삭제하시겠습니까?")) {
+    try {
+      await apiDeleteEvent(eventId);
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      alert("일정 삭제에 실패했습니다.");
+    }
+  }
+}, []);
+```
+
+### useMemo Patterns
+
+```typescript
+// ✅ CORRECT - Use for expensive calculations
+const filteredEvents = useMemo(() => {
+  return events.filter((event) => event.categoryId === selectedCategory);
+}, [events, selectedCategory]);
+
+// ✅ CORRECT - Use for derived state
+const eventCount = useMemo(() => events.length, [events]);
+```
+
+## 🎨 STYLING PATTERNS
+
+### Tailwind CSS Class Organization
+
+```typescript
+// ✅ CORRECT - Group related classes
+className="
+  px-4 py-2
+  text-sm font-medium
+  text-white
+  bg-primary
+  rounded-lg
+  hover:bg-primary/90
+  focus:outline-none
+  focus:ring-2
+  focus:ring-offset-2
+  focus:ring-blue-500
+"
+
+// ✅ CORRECT - Use template literals for conditional classes
+className={`
+  text-sm
+  ${isActive ? 'text-blue-600' : 'text-gray-500'}
+  ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-700'}
+`}
+```
+
+### Button Component Patterns
+
+```typescript
+// Primary Button
+<button className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90">
+  Save
+</button>
+
+// Secondary Button
+<button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100">
+  Cancel
+</button>
+
+// Danger Button
+<button className="px-4 py-2 text-sm font-medium text-red-600 bg-transparent rounded-lg hover:bg-red-50 focus:ring-2 focus:ring-red-500">
+  Delete
+</button>
+
+// Icon Button
+<button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
+  <Icon className="w-5 h-5" />
+</button>
+```
+
+## 🔄 EVENT HANDLING PATTERNS
+
+### Form Handling
+
+```typescript
+// ✅ CORRECT - Use controlled components
+const [formData, setFormData] = useState({
+  title: "",
+  date: "",
+  startTime: "09:00",
+  endTime: "10:00",
+});
+
+const handleInputChange = (field: string, value: string) => {
+  setFormData((prev) => ({ ...prev, [field]: value }));
+};
+
+// ✅ CORRECT - Form submission
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!formData.title.trim()) {
+    alert("제목을 입력해주세요.");
+    return;
+  }
+
+  try {
+    const savedEvent = await apiSaveEvent(formData, isNew);
+    onSave(savedEvent);
+    onClose();
+  } catch (error) {
+    console.error("Failed to save:", error);
+    alert("저장에 실패했습니다.");
+  }
+};
+```
+
+### Click Event Handling
+
+```typescript
+// ✅ CORRECT - Prevent event bubbling when needed
+const handleItemClick = (e: React.MouseEvent, item: Item) => {
+  e.stopPropagation();
+  onItemSelect(item);
+};
+
+// ✅ CORRECT - Use event delegation for lists
+const handleListClick = (e: React.MouseEvent) => {
+  const target = e.target as HTMLElement;
+  if (target.matches("[data-item-id]")) {
+    const itemId = target.getAttribute("data-item-id");
+    onItemClick(itemId);
+  }
+};
+```
+
+## 🚫 FORBIDDEN PATTERNS
+
+### What NOT to do in React components:
+
+```typescript
+// ❌ WRONG - Don't use any type
+const [data, setData] = useState<any>([]);
+
+// ❌ WRONG - Don't mutate state directly
+const handleUpdate = () => {
+  events.push(newEvent); // WRONG!
+  setEvents(events); // WRONG!
+};
+
+// ❌ WRONG - Don't create functions inside render
+const Component = () => {
+  return (
+    <button onClick={() => {
+      // Complex logic here - WRONG!
+      console.log("clicked");
+      setState(newValue);
+    }}>
+      Click me
+    </button>
+  );
+};
+
+// ❌ WRONG - Don't use inline styles
+<div style={{ backgroundColor: 'red', padding: '10px' }}> // WRONG!
+
+// ❌ WRONG - Don't skip error handling
+const handleAsync = async () => {
+  const result = await apiCall(); // No try/catch - WRONG!
+  setData(result);
+};
+
+// ❌ WRONG - Don't create components without proper typing
+const Component = (props) => { // No interface - WRONG!
+  return <div>{props.children}</div>;
+};
+```
+
+## ✅ BEST PRACTICES CHECKLIST
+
+### Before Creating/Modifying Components:
+
+- [ ] Define TypeScript interface for props
+- [ ] Use proper state management patterns
+- [ ] Implement error handling for async operations
+- [ ] Use Tailwind CSS classes (no inline styles)
+- [ ] Follow naming conventions
+- [ ] Use useCallback for event handlers passed as props
+- [ ] Use useMemo for expensive calculations
+- [ ] Implement proper loading states
+- [ ] Add proper accessibility attributes
+- [ ] Test component behavior
+
+### Performance Optimization:
+
+- [ ] Use React.memo for expensive components
+- [ ] Implement proper dependency arrays in hooks
+- [ ] Avoid unnecessary re-renders
+- [ ] Use lazy loading for large components
+- [ ] Optimize bundle size with proper imports
+      description:
+      globs:
+      alwaysApply: false
+
+---
