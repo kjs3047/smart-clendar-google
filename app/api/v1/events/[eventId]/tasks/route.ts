@@ -103,7 +103,17 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ eve
       return NextResponse.json(formattedTasks);
     } catch (error) {
       console.error('Error updating tasks:', error);
-      return NextResponse.json({ message: 'Failed to update tasks' }, { status: 500 });
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        userId: req.userId,
+        requestData: { date, categoryId, subCategoryId, ...eventData }
+      });
+      return NextResponse.json({ 
+        message: 'Failed to update event',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 });
     }
   });
 }
