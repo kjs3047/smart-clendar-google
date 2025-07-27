@@ -41,7 +41,9 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      await prisma.$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx) => {
+        console.log('Starting task templates transaction for user:', req.userId);
+        console.log('Client templates data:', JSON.stringify(clientTemplates, null, 2));
         await tx.taskTemplate.deleteMany({ where: { userId: req.userId } });
         const userSubCategoryIds = (
           await tx.subCategory.findMany({
@@ -87,7 +89,18 @@ export async function PUT(request: NextRequest) {
         );
       }
       
-      return NextResponse.json({ message: 'Failed to update task templates' }, { status: 500 });
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        code: error.code || 'No code',
+        userId: req.userId
+      });
+      
+      return NextResponse.json({ 
+        message: 'Failed to update task templates',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 });
     }
   });
 }

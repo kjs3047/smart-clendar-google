@@ -35,24 +35,35 @@ export async function PUT(request: NextRequest) {
     try {
       const clientCategories: Category[] = await request.json();
 
-      await prisma.$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx) => {
+        console.log('Starting transaction for user:', req.userId);
+        console.log('Client categories data:', JSON.stringify(clientCategories, null, 2));
+        
         const existingCatIds = (
           await tx.category.findMany({ where: { userId: req.userId }, select: { id: true } })
         ).map((c) => c.id);
         const clientCatIds = clientCategories.map((c) => c.id);
+        console.log('Existing categories:', existingCatIds);
+        console.log('Client categories:', clientCatIds);
 
         const catsToDelete = existingCatIds.filter((id) => !clientCatIds.includes(id));
         if (catsToDelete.length > 0) {
+          console.log('Deleting categories:', catsToDelete);
           await tx.category.deleteMany({ where: { id: { in: catsToDelete }, userId: req.userId } });
         }
 
         for (const cat of clientCategories) {
+          console.log('Processing category:', cat.id, cat.name);
+          
           const upsertedCategory = await tx.category.upsert({
             where: { id: cat.id },
             update: { name: cat.name, color: cat.color },
             create: { id: cat.id, name: cat.name, color: cat.color, userId: req.userId },
           });
-          if (cat.subCategories) {
+          
+          if (cat.subCategories && cat.subCategories.length > 0) {
+            console.log('Processing subcategories for:', cat.id);
+            
             const existingSubCatIds = (
               await tx.subCategory.findMany({ where: { categoryId: upsertedCategory.id }, select: { id: true } })
             ).map((sc) => sc.id);
@@ -60,10 +71,12 @@ export async function PUT(request: NextRequest) {
             const subCatsToDelete = existingSubCatIds.filter((id) => !clientSubCatIds.includes(id));
 
             if (subCatsToDelete.length > 0) {
+              console.log('Deleting subcategories:', subCatsToDelete);
               await tx.subCategory.deleteMany({ where: { id: { in: subCatsToDelete } } });
             }
 
             for (const sub of cat.subCategories) {
+              console.log('Processing subcategory:', sub.id, sub.name);
               await tx.subCategory.upsert({
                 where: { id: sub.id },
                 update: { name: sub.name },
@@ -72,6 +85,8 @@ export async function PUT(request: NextRequest) {
             }
           }
         }
+        
+        console.log('Transaction completed successfully');
       });
       const updatedCategories = await prisma.category.findMany({
         where: { userId: req.userId },
