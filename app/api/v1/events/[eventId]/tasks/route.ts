@@ -34,17 +34,19 @@ export async function GET(request: NextRequest, context: { params: Promise<{ eve
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ eventId: string }> }) {
   return withAuth(request, async (req: AuthenticatedRequest) => {
+    let clientTasks: Task[] = [];
+    let eventId: string = '';
     try {
       const params = await context.params;
-      const { eventId } = params;
-      const clientTasks: Task[] = await request.json();
+      eventId = params.eventId;
+      clientTasks = await request.json();
 
       const event = await prisma.event.findFirst({ where: { id: eventId, userId: req.userId } });
       if (!event) {
         return NextResponse.json({ message: 'Event not found or not owned by user.' }, { status: 404 });
       }
 
-      await prisma.$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx) => {
         const existingTaskIds = (await tx.task.findMany({ where: { eventId }, select: { id: true } })).map(
           (t) => t.id
         );
@@ -108,10 +110,11 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ eve
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack trace',
         userId: req.userId,
-        requestData: { date, categoryId, subCategoryId, ...eventData }
+        eventId: eventId,
+        tasksCount: clientTasks.length
       });
       return NextResponse.json({ 
-        message: 'Failed to update event',
+        message: 'Failed to update tasks',
         error: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
     }
