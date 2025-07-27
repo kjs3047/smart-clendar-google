@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       'https://www.googleapis.com/auth/userinfo.email'
     ],
     prompt: 'consent',
+    redirect_uri: process.env.GOOGLE_CALLBACK_URL,
   });
 
   const response = NextResponse.redirect(authorizeUrl);
