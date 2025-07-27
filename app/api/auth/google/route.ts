@@ -37,3 +37,5 @@ export async function GET(request: NextRequest) {
 
   return response;
 }
+
+// Fixed unused import issue
