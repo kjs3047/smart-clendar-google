@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "taskmaster-ai": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "--package=task-master-ai", "task-master-ai"],
+      "env": {}
+    },
+    "context7": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@upstash/context7-mcp"],
+      "env": {}
+    },
+    "sequential": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {}
+    },
+    "magic": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@21st-dev/magic@latest", "API_KEY=\"your-api-key\""],
+      "env": {}
+    },
+    "playwright": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@playwright/mcp@latest"],
+      "env": {}
+    }
+  }
+}
