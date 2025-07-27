@@ -1,17 +1,10 @@
-// This file is the Prisma schema, which defines your database models and their relations.
-// It's a single source of truth for your database schema.
-//
-// You can find more information about it in the docs: https://pris.ly/d/prisma-schema
-// To apply this schema to your database, rename this file to "prisma/schema.prisma"
-// and run `npx prisma migrate dev` in the 'server' directory.
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 // Enum for Task status, matching the frontend 'types.ts'
