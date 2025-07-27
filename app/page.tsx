@@ -40,11 +40,11 @@ const CalendarPage: React.FC = () => {
       setKanbanTasks({}); // Reset tasks, they will be fetched on demand
     } catch (error) {
       console.error("Failed to load user data", error);
-      if (error instanceof Error && error.message.includes('401')) {
+      if (error instanceof Error && error.message.includes("401")) {
         // Handle unauthorized access gracefully
         handleLogout();
       } else {
-        alert("데이터를 불러오는 데 실패했습니다.");
+        alert("데이터를 불러오는 데 실패했습니다!.");
       }
     }
   }, []);
@@ -249,12 +249,16 @@ const CalendarPage: React.FC = () => {
       const savedTemplates = await api.apiSaveTaskTemplates(updatedTemplates);
       setTaskTemplates(savedTemplates);
     } catch (error: any) {
-      console.error("Failed to update task templates:", error);
-      
       // 중복 content 에러 처리
-      if (error.message && error.message.includes('DUPLICATE_CONTENT')) {
-        alert("중복된 내용의 태스크 템플릿이 있습니다. 동일한 내용을 제거하고 다시 시도해주세요.");
+      if (error.message && error.message.includes("DUPLICATE_CONTENT")) {
+        const duplicateInfo = error.message.split("DUPLICATE_CONTENT: ")[1];
+        if (duplicateInfo) {
+          alert(`중복된 내용의 태스크 템플릿이 있습니다.\n\n중복 항목: "${duplicateInfo}"\n\n동일한 내용을 제거하고 다시 시도해주세요.`);
+        } else {
+          alert("중복된 내용의 태스크 템플릿이 있습니다. 동일한 내용을 제거하고 다시 시도해주세요.");
+        }
       } else {
+        console.error("Failed to update task templates:", error);
         alert("태스크 템플릿 업데이트에 실패했습니다.");
       }
     }
