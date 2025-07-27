@@ -80,7 +80,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(updatedCategories);
     } catch (error) {
       console.error('Error updating categories:', error);
-      return NextResponse.json({ message: 'Failed to update categories' }, { status: 500 });
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        userId: req.userId,
+        clientCategoriesCount: clientCategories ? clientCategories.length : 'undefined'
+      });
+      return NextResponse.json({ 
+        message: 'Failed to update categories',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 });
+      
     }
   });
 }
