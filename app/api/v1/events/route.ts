@@ -14,8 +14,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return withAuth(request, async (req: AuthenticatedRequest) => {
+    let date: string = '';
+    let categoryId: string = '';
+    let subCategoryId: string | null = null;
+    let eventData: any = {};
     try {
-      const { date, categoryId, subCategoryId, ...eventData } = await request.json();
+      ({ date, categoryId, subCategoryId, ...eventData } = await request.json());
 
       const category = await prisma.category.findFirst({ where: { id: categoryId, userId: req.userId } });
       if (!category) {

@@ -40,6 +40,9 @@ export function safeApiHandler<T>(
     let requestData: T | null = null;
     try {
       requestData = await request.json();
+      if (requestData === null) {
+        throw new Error('Request data is null');
+      }
       return await handler(requestData);
     } catch (error) {
       logApiError(error, { 
