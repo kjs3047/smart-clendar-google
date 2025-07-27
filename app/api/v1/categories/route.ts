@@ -32,8 +32,9 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   return withAuth(request, async (req: AuthenticatedRequest) => {
+    let clientCategories: Category[] = [];
     try {
-      const clientCategories: Category[] = await request.json();
+      clientCategories = await request.json();
 
       await prisma.$transaction(async (tx) => {
         console.log('Starting transaction for user:', req.userId);
