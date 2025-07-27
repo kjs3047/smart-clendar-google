@@ -128,4 +128,35 @@ smart-calendar/
 - **중복 오류**: 동일한 내용의 템플릿이 있는지 확인하고 제거
 - **저장 실패**: 서브카테고리가 올바르게 선택되었는지 확인
 
+### Vercel 배포 시 TypeScript 오류 (해결됨 - 2025-01-27)
+**증상**: 로컬에서는 정상 작동하지만 Vercel 배포 시 TypeScript 컴파일 오류 발생
+
+**원인**: 
+- 로컬 개발 모드(`npm run dev`)는 타입 검사가 관대함
+- Vercel 프로덕션 빌드(`npm run build`)는 엄격한 타입 검사 수행
+- API 라우트에서 try 블록 내 변수가 catch 블록에서 접근 불가
+
+**해결된 패턴**:
+```typescript
+// ❌ 오류 패턴
+try {
+  const { data } = await request.json();
+} catch (error) {
+  console.error({ data }); // 변수 접근 불가
+}
+
+// ✅ 해결 패턴  
+let data: any = {};
+try {
+  ({ data } = await request.json());
+} catch (error) {
+  console.error({ data }); // 변수 접근 가능
+}
+```
+
+**예방법**:
+- 배포 전 `npm run build` 로컬 테스트
+- `npx tsc --noEmit`으로 타입 검사
+- 모든 API 라우트에서 일관된 변수 선언 패턴 사용
+
 이제 **단일 명령어**로 전체 애플리케이션을 실행할 수 있습니다! 🎉

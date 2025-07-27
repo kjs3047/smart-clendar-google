@@ -200,6 +200,50 @@ NODE_ENV=development
 - **Validation Errors**: Check that subcategories are properly selected before saving templates
 - **Database Constraints**: Unique constraint on (userId, subCategoryId, content) prevents duplicates
 
+### TypeScript Scope Errors in API Routes (Fixed 2025-01-27)
+**Problem**: Variables declared inside try blocks are not accessible in catch blocks, causing compilation errors during Vercel deployment.
+
+**Why this happens**:
+- Local development (`npm run dev`): TypeScript checking is more lenient
+- Production build (`npm run build`): Strict TypeScript compilation catches all scope issues
+- Vercel deployment fails because it runs production build with full type checking
+
+**Error Pattern**:
+```typescript
+// ❌ WRONG: Variable declared in try block
+try {
+  const { date, categoryId } = await request.json();
+  // ... logic
+} catch (error) {
+  console.error('Error details:', { date, categoryId }); // ❌ Variables not accessible
+}
+```
+
+**Solution Pattern**:
+```typescript
+// ✅ CORRECT: Declare variables outside try block
+let date: string = '';
+let categoryId: string = '';
+try {
+  ({ date, categoryId } = await request.json());
+  // ... logic
+} catch (error) {
+  console.error('Error details:', { date, categoryId }); // ✅ Variables accessible
+}
+```
+
+**Fixed Files**:
+- `app/api/v1/events/route.ts`: POST method scope fix
+- `app/api/v1/events/[eventId]/route.ts`: PUT and DELETE methods
+- `app/api/v1/categories/route.ts`: PUT method 
+- `app/api/v1/events/[eventId]/tasks/route.ts`: Task operations
+- `lib/errorHandler.ts`: Type safety improvements
+
+**Prevention**:
+- Always run `npx tsc --noEmit` before deploying
+- Run `npm run build` locally to catch compilation errors
+- Use consistent variable declaration patterns in all API routes
+
 ## Important Notes
 
 - **Migration Complete**: Successfully migrated from React+Express to unified Next.js architecture
