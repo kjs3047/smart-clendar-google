@@ -4,10 +4,15 @@ import { prisma } from '@/lib/db';
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ eventId: string }> }) {
   return withAuth(request, async (req: AuthenticatedRequest) => {
+    let date: string = '';
+    let categoryId: string = '';
+    let subCategoryId: string | null = null;
+    let eventData: any = {};
     try {
       const params = await context.params;
       const { eventId } = params;
-      const { date, categoryId, subCategoryId, ...eventData } = await request.json();
+      const requestData = await request.json();
+      ({ date, categoryId, subCategoryId, ...eventData } = requestData);
 
       const existingEvent = await prisma.event.findFirst({ where: { id: eventId, userId: req.userId } });
       if (!existingEvent) {
@@ -40,7 +45,17 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ eve
       return NextResponse.json({ ...updatedEvent, date: updatedEvent.date.toISOString().split('T')[0] });
     } catch (error) {
       console.error('Error updating event:', error);
-      return NextResponse.json({ message: 'Failed to update event' }, { status: 500 });
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        userId: req.userId,
+        requestData: { date, categoryId, subCategoryId, ...eventData }
+      });
+      return NextResponse.json({ 
+        message: 'Failed to update event',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 });
     }
   });
 }
@@ -65,7 +80,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack trace',
         userId: req.userId,
-        requestData: { date, categoryId, subCategoryId, ...eventData }
+        eventId: params.eventId
       });
       return NextResponse.json({ 
         message: 'Failed to delete event',
