@@ -65,6 +65,9 @@ export async function PUT(request: NextRequest) {
             }
           }
         }
+        console.log('Task templates transaction completed successfully');
+      }, {
+        timeout: 10000, // 10초 타임아웃
       });
       const newTemplates = await prisma.taskTemplate.findMany({ where: { userId: req.userId } });
       const grouped = newTemplates.reduce((acc, template) => {

@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest) {
 
       await prisma.$transaction(async (tx) => {
         console.log('Starting transaction for user:', req.userId);
-        console.log('Client categories data:', JSON.stringify(clientCategories, null, 2));
+        console.log('Client categories count:', clientCategories.length);
         
         const existingCatIds = (
           await tx.category.findMany({ where: { userId: req.userId }, select: { id: true } })
@@ -87,6 +87,8 @@ export async function PUT(request: NextRequest) {
         }
         
         console.log('Transaction completed successfully');
+      }, {
+        timeout: 10000, // 10초 타임아웃
       });
       const updatedCategories = await prisma.category.findMany({
         where: { userId: req.userId },
