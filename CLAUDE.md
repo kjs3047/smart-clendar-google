@@ -4,70 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Smart Calendar is a full-stack TypeScript application with React 19 frontend and Node.js/Express backend, featuring Google OAuth authentication and PostgreSQL database integration.
+Smart Calendar is a unified full-stack TypeScript application built with Next.js 15 App Router, featuring Google OAuth authentication and PostgreSQL database integration. **Successfully migrated from separate React + Express architecture to unified Next.js.**
 
 ## Core Development Commands
 
-### Frontend Development
+### Unified Development (Next.js)
 ```bash
 # Install dependencies
 npm install
 
-# Development server (runs on http://localhost:5173)
+# Development server (runs on http://localhost:3000)
 npm run dev
 
 # Build for production
 npm run build
 
-# Preview production build
-npm run preview
-```
-
-### Backend Development
-```bash
-# Navigate to server directory
-cd server
-
-# Install dependencies
-npm install
-
-# Development server with auto-reload (runs on http://localhost:3001)
-npm run dev
-
-# Build TypeScript
-npm run build
-
-# Production server
+# Start production server
 npm start
 
 # Prisma commands
-npm run prisma:generate    # Generate Prisma client
-npm run prisma:migrate     # Run database migrations
+npx prisma generate         # Generate Prisma client
+npx prisma migrate dev       # Run database migrations
 npx prisma migrate dev --name init    # Initialize database
+```
+
+### Legacy Commands (No longer used)
+```bash
+# These commands are no longer used after Next.js migration
+# cd server && npm run dev  # OLD: Separate backend server
+# npm run dev (in root)     # OLD: Separate frontend server
 ```
 
 ## Architecture & Code Standards
 
-### Project Structure
+### Project Structure (Next.js Unified)
 ```
 smart-calendar/
-├── App.tsx                 # Main React application
-├── components/             # React components
-│   ├── ui/                 # Reusable UI components (Dialog, Icons)
-│   ├── EventModal.tsx      # Event creation/editing
-│   ├── KanbanModal.tsx     # Task management board
-│   └── AdminSettingsModal.tsx  # Category/template management
-├── types.ts               # TypeScript type definitions
-├── constants.ts           # Application constants
-├── server/
-│   ├── src/
-│   │   ├── index.ts       # Express server entry
-│   │   ├── db.ts          # Prisma database client
-│   │   └── types.ts       # Server type definitions
-│   ├── prisma/
-│   │   └── schema.prisma  # Database schema
-│   └── api_axios.ts       # Frontend API client
-└── vite.config.ts         # Vite configuration
+├── app/                    # Next.js App Router
+│   ├── api/               # API Routes (replaces Express server)
+│   │   ├── auth/          # Authentication endpoints
+│   │   │   ├── google/    # Google OAuth routes
+│   │   │   ├── logout/    # Logout endpoint
+│   │   │   └── user/      # User info endpoint
+│   │   └── v1/            # API v1 endpoints
+│   │       ├── events/    # Event CRUD operations
+│   │       ├── categories/ # Category management
+│   │       └── task-templates/ # Task template management
+│   ├── globals.css        # Global styles (Tailwind)
+│   ├── layout.tsx         # Root layout component
+│   └── page.tsx           # Main calendar page
+├── components/            # React components
+│   ├── ui/               # Reusable UI components (Dialog, Icons)
+│   ├── EventModal.tsx    # Event creation/editing
+│   ├── KanbanModal.tsx   # Task management board
+│   └── AdminSettingsModal.tsx # Category/template management
+├── lib/                  # Utilities and configurations
+│   ├── auth.ts          # Authentication helpers
+│   ├── db.ts            # Prisma database client
+│   ├── api.ts           # Frontend API client
+│   ├── middleware.ts    # Authentication middleware
+│   └── constants.ts     # Application constants
+├── prisma/              # Database schema and migrations
+│   └── schema.prisma    # Database schema
+├── types.ts             # TypeScript type definitions
+└── next.config.js       # Next.js configuration
 ```
 
 ### TypeScript Standards
@@ -105,14 +105,15 @@ smart-calendar/
 ## Authentication System
 
 The application uses Google OAuth 2.0 for authentication:
+- Next.js API Routes for authentication endpoints
 - Session-based authentication with cookie-session
-- Protected routes require `ensureAuthenticated` middleware
+- Protected routes require `withAuth` middleware
 - Frontend checks `currentUser` state before protected actions
 - All API endpoints under `/api/v1` require authentication
 
 ## Environment Setup
 
-### Required Environment Variables (.env in server directory)
+### Required Environment Variables (.env.local in project root)
 ```env
 # Database
 DATABASE_URL="postgresql://postgres:password@localhost:5432/smart_calendar"
@@ -120,21 +121,19 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/smart_calendar"
 # Google OAuth
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
-GOOGLE_CALLBACK_URL="http://localhost:3001/api/auth/google/callback"
+GOOGLE_CALLBACK_URL="http://localhost:3000/api/auth/google/callback"
 
 # Session
 COOKIE_SESSION_SECRET="your-super-secret-session-key"
 
-# Server
-PORT=3001
+# Application
 NODE_ENV=development
-FRONTEND_URL="http://localhost:5173"
 ```
 
 ### Database Setup
 1. Install PostgreSQL
 2. Create database: `CREATE DATABASE smart_calendar;`
-3. Run migrations: `cd server && npx prisma migrate dev --name init`
+3. Run migrations: `npx prisma migrate dev --name init`
 
 ## Key Features & Domain Logic
 
@@ -154,11 +153,20 @@ FRONTEND_URL="http://localhost:5173"
 - Tasks can have comments with author and timestamp
 - Task templates can be defined per subcategory
 
+### Task Template System (Updated 2025-01-27)
+- **Duplicate Content Prevention**: Pre-validation prevents saving duplicate template content
+- **User-Friendly Error Messages**: Specific error messages showing which content is duplicated
+- **Improved Developer Experience**: Separation of user errors from system errors in console
+- **Database Constraint Handling**: Proper handling of Prisma unique constraint violations
+- **Validation**: Server-side validation with client-side error handling
+
 ### Error Handling Patterns
 - **ALWAYS** use try/catch for async operations
-- **ALWAYS** log errors with `console.error`
+- **ALWAYS** log system errors with `console.error` (but not user errors like duplicates)
 - **ALWAYS** show user-friendly Korean error messages
+- **ALWAYS** provide specific error context when possible (e.g., which item is duplicated)
 - Handle 401 errors by redirecting to login
+- Separate user errors (duplicates, validation) from system errors in logging
 
 ## Testing & Quality
 
@@ -187,13 +195,17 @@ FRONTEND_URL="http://localhost:5173"
 - Check redirect URI matches exactly
 - Ensure Google+ API is enabled
 
-### Port Conflicts
-- Frontend default: 5173 (configured in vite.config.ts)
-- Backend default: 3001 (configured in .env PORT)
+### Task Template Issues (Updated 2025-01-27)
+- **Duplicate Content Error**: If you see "중복된 내용의 태스크 템플릿이 있습니다", remove duplicate template entries
+- **Validation Errors**: Check that subcategories are properly selected before saving templates
+- **Database Constraints**: Unique constraint on (userId, subCategoryId, content) prevents duplicates
 
 ## Important Notes
 
-- This project has extensive Cursor rules in `.cursor/rules/` directory with detailed patterns
+- **Migration Complete**: Successfully migrated from React+Express to unified Next.js architecture
+- **Single Port**: Application now runs on port 3000 only (no separate frontend/backend)
+- **Modern Stack**: Next.js 15 App Router with React 19 and TypeScript
 - Korean language is used for user-facing messages and UI text
 - The application supports real-time data sync between frontend and backend
 - Component-based architecture with strict TypeScript enforcement
+- Enhanced error handling with user-friendly messages and developer debugging separation
