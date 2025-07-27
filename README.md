@@ -156,3 +156,7 @@ smart-calendar/
 - Set `NODE_ENV=production` in production
 - Use strong database passwords
 - Regularly update dependencies
+
+## React TypeScript 타입 정의가 없어서 발생하는 오류
+
+- pnpm install --save-dev @types/react @types/react-dom
