@@ -148,6 +148,11 @@ export const apiSaveTaskTemplates = async (templates: {
     credentials: 'include',
   });
   if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    if (errorData?.message === 'DUPLICATE_CONTENT') {
+      const duplicates = errorData.duplicates || [];
+      throw new Error(`DUPLICATE_CONTENT: ${duplicates.join(', ')}`);
+    }
     throw new Error('Failed to save task templates');
   }
   return await response.json();

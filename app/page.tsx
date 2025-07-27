@@ -248,9 +248,15 @@ const CalendarPage: React.FC = () => {
     try {
       const savedTemplates = await api.apiSaveTaskTemplates(updatedTemplates);
       setTaskTemplates(savedTemplates);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update task templates:", error);
-      alert("태스크 템플릿 업데이트에 실패했습니다.");
+      
+      // 중복 content 에러 처리
+      if (error.message && error.message.includes('DUPLICATE_CONTENT')) {
+        alert("중복된 내용의 태스크 템플릿이 있습니다. 동일한 내용을 제거하고 다시 시도해주세요.");
+      } else {
+        alert("태스크 템플릿 업데이트에 실패했습니다.");
+      }
     }
   };
 

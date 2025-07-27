@@ -20,6 +20,27 @@ export async function PUT(request: NextRequest) {
     try {
       const clientTemplates: { [subCategoryId: string]: any[] } = await request.json();
 
+      // 중복 content 검사
+      const duplicateContents: string[] = [];
+      for (const subCatId in clientTemplates) {
+        const contents = clientTemplates[subCatId].map(t => t.content);
+        const uniqueContents = new Set(contents);
+        if (contents.length !== uniqueContents.size) {
+          const duplicates = contents.filter((content, index) => contents.indexOf(content) !== index);
+          duplicateContents.push(...duplicates);
+        }
+      }
+
+      if (duplicateContents.length > 0) {
+        return NextResponse.json(
+          { 
+            message: 'DUPLICATE_CONTENT',
+            duplicates: [...new Set(duplicateContents)]
+          }, 
+          { status: 400 }
+        );
+      }
+
       await prisma.$transaction(async (tx: any) => {
         await tx.taskTemplate.deleteMany({ where: { userId: req.userId } });
         const userSubCategoryIds = (
@@ -52,8 +73,20 @@ export async function PUT(request: NextRequest) {
       }, {} as { [key: string]: any[] });
 
       return NextResponse.json(grouped);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating task templates:', error);
+      
+      // Prisma unique constraint 에러 처리
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { 
+            message: 'DUPLICATE_CONTENT',
+            details: '동일한 내용의 태스크 템플릿이 이미 존재합니다.'
+          }, 
+          { status: 400 }
+        );
+      }
+      
       return NextResponse.json({ message: 'Failed to update task templates' }, { status: 500 });
     }
   });
