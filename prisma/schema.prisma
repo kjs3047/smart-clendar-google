@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// Enum for Task status, matching the frontend 'types.ts'
+enum TaskStatus {
+  ToDo
+  InProgress
+  Done
+}
+
+// User model for authentication and ownership
+model User {
+  id            String         @id
+  googleId      String         @unique
+  email         String         @unique
+  name          String
+  avatarUrl     String?
+  categories    Category[]
+  events        Event[]
+  comments      Comment[]
+  taskTemplates TaskTemplate[]
+}
+
+// Categories for organizing events
+model Category {
+  id            String        @id
+  name          String
+  color         String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  subCategories SubCategory[]
+  events        Event[]
+}
+
+// Sub-categories nested under a main category
+model SubCategory {
+  id            String         @id
+  name          String
+  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId    String
+  events        Event[]
+  taskTemplates TaskTemplate[]
+}
+
+// Main Event model for the calendar
+model Event {
+  id            String       @id @default(cuid())
+  title         String
+  date          DateTime
+  startTime     String
+  endTime       String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  category      Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId    String
+  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  subCategoryId String?
+  tasks         Task[]
+}
+
+// Tasks for the Kanban board, linked to a specific event
+model Task {
+  id        String     @id
+  content   String
+  status    TaskStatus
+  createdAt DateTime   @default(now())
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String
+  comments  Comment[]
+}
+
+// Comments on a specific task
+model Comment {
+  id        String   @id
+  content   String
+  createdAt DateTime
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+}
+
+// Pre-defined task templates for specific sub-categories
+model TaskTemplate {
+  id            String      @id @default(cuid())
+  content       String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  subCategory   SubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  subCategoryId String
+
+  @@unique([userId, subCategoryId, content])
+}

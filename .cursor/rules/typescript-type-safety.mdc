@@ -1,0 +1,342 @@
+# TypeScript Type Safety & Best Practices
+
+## 🏷️ TYPE DEFINITIONS
+
+### Core Type Definitions
+
+Reference: [types.ts](mdc:types.ts)
+
+**ALWAYS** use these established types:
+
+```typescript
+// User authentication
+export interface User {
+  name: string;
+  avatarUrl: string;
+}
+
+// Category system
+export interface SubCategory {
+  id: string;
+  name: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  subCategories: SubCategory[];
+}
+
+// Task management
+export enum TaskStatus {
+  ToDo = "ToDo",
+  InProgress = "InProgress",
+  Done = "Done",
+}
+
+export interface Comment {
+  id: string;
+  author: string;
+  content: string;
+  createdAt: string; // ISO Date string
+}
+
+export interface Task {
+  id: string;
+  content: string;
+  status: TaskStatus;
+  comments: Comment[];
+}
+
+export interface TaskTemplate {
+  id: string;
+  content: string;
+}
+
+// Event system
+export interface Event {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  categoryId: string;
+  subCategoryId?: string;
+}
+```
+
+## 🚨 CRITICAL TYPE SAFETY RULES
+
+### 1. NEVER Use `any` Type
+
+```typescript
+// ❌ WRONG - Never use any
+const [data, setData] = useState<any>([]);
+const handleEvent = (event: any) => {};
+
+// ✅ CORRECT - Use proper typing
+const [data, setData] = useState<Event[]>([]);
+const handleEvent = (event: Event) => {};
+
+// ✅ CORRECT - Use unknown for truly unknown types
+const handleUnknown = (data: unknown) => {
+  if (typeof data === "string") {
+    // Safe to use as string
+  }
+};
+```
+
+### 2. ALWAYS Define Component Props Interfaces
+
+```typescript
+// ✅ CORRECT - Always define Props interface
+interface EventModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (event: Event) => void;
+  onDelete?: (eventId: string) => void;
+  event: Event | null;
+  categories: Category[];
+  selectedDate: Date;
+}
+
+export const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, event, categories, selectedDate }) => {
+  // Component implementation
+};
+```
+
+### 3. ALWAYS Type Async Functions
+
+```typescript
+// ✅ CORRECT - Explicit return types for async functions
+export const apiGetEvents = async (): Promise<Event[]> => {
+  const { data } = await axiosInstance.get<Event[]>("/v1/events");
+  return data;
+};
+
+export const apiSaveEvent = async (event: Event, isNew: boolean): Promise<Event> => {
+  if (isNew) {
+    const { data } = await axiosInstance.post<Event>("/v1/events", event);
+    return data;
+  } else {
+    const { data } = await axiosInstance.put<Event>(`/v1/events/${event.id}`, event);
+    return data;
+  }
+};
+```
+
+## 🎯 TYPE PATTERNS
+
+### Union Types
+
+```typescript
+// ✅ CORRECT - Use union types for multiple possible values
+type EventOrNull = Event | null;
+type UserOrNull = User | null;
+
+// ✅ CORRECT - Use union types for status
+type LoadingState = "idle" | "loading" | "success" | "error";
+```
+
+### Generic Types
+
+```typescript
+// ✅ CORRECT - Use generics for reusable components
+interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  message?: string;
+}
+
+// ✅ CORRECT - Generic hooks
+export function useLocalStorage<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  // Implementation
+}
+```
+
+### Type Guards
+
+```typescript
+// ✅ CORRECT - Use type guards for runtime type checking
+const isEvent = (obj: unknown): obj is Event => {
+  return obj !== null && typeof obj === "object" && "id" in obj && "title" in obj && "date" in obj;
+};
+
+// ✅ CORRECT - Use type guards in functions
+const processEvent = (data: unknown) => {
+  if (isEvent(data)) {
+    // TypeScript knows data is Event here
+    console.log(data.title);
+  }
+};
+```
+
+## 🔧 UTILITY TYPES
+
+### Partial and Required
+
+```typescript
+// ✅ CORRECT - Use Partial for optional updates
+const updateEvent = (id: string, updates: Partial<Event>) => {
+  // Only some fields may be provided
+};
+
+// ✅ CORRECT - Use Required for mandatory fields
+const createEvent = (data: Required<Pick<Event, "title" | "date" | "categoryId">>) => {
+  // All specified fields are required
+};
+```
+
+### Pick and Omit
+
+```typescript
+// ✅ CORRECT - Use Pick for specific fields
+type EventSummary = Pick<Event, "id" | "title" | "date">;
+
+// ✅ CORRECT - Use Omit to exclude fields
+type EventFormData = Omit<Event, "id">;
+```
+
+### Record and Index Signatures
+
+```typescript
+// ✅ CORRECT - Use Record for object maps
+type CategoryMap = Record<string, Category>;
+type TaskStatusMap = Record<TaskStatus, string>;
+
+// ✅ CORRECT - Use index signatures for flexible objects
+interface ApiResponses {
+  [endpoint: string]: unknown;
+}
+```
+
+## 🚫 FORBIDDEN TYPE PATTERNS
+
+### What NOT to do with TypeScript:
+
+```typescript
+// ❌ WRONG - Don't use any
+const handleData = (data: any) => {
+  console.log(data.someProperty); // No type safety
+};
+
+// ❌ WRONG - Don't ignore TypeScript errors
+// @ts-ignore
+const result = someFunction();
+
+// ❌ WRONG - Don't use Object type
+const processObject = (obj: Object) => {
+  // Object type is too generic
+};
+
+// ❌ WRONG - Don't use Function type
+const callback: Function = () => {
+  // Function type is too generic
+};
+
+// ❌ WRONG - Don't use type assertions without validation
+const event = data as Event; // Unsafe!
+
+// ❌ WRONG - Don't create components without proper typing
+const Component = (props) => {
+  return <div>{props.children}</div>; // No interface defined
+};
+```
+
+## ✅ TYPE SAFETY CHECKLIST
+
+### Before Writing Code:
+
+- [ ] Define interfaces for all component props
+- [ ] Use proper types for state variables
+- [ ] Type all function parameters and return values
+- [ ] Use union types for multiple possible values
+- [ ] Implement type guards for runtime validation
+- [ ] Avoid using `any` type
+- [ ] Use utility types when appropriate
+- [ ] Validate external data with type guards
+
+### Code Review Checklist:
+
+- [ ] No `any` types used
+- [ ] All components have Props interfaces
+- [ ] All async functions have return types
+- [ ] Proper error handling with typed errors
+- [ ] Type guards used for external data
+- [ ] Utility types used appropriately
+- [ ] No TypeScript errors or warnings
+- [ ] Proper null/undefined handling
+
+## 🎯 ADVANCED TYPE PATTERNS
+
+### Conditional Types
+
+```typescript
+// ✅ CORRECT - Use conditional types for complex logic
+type ApiResponse<T> = T extends Event
+  ? { data: Event; type: "event" }
+  : T extends Category
+  ? { data: Category; type: "category" }
+  : { data: T; type: "unknown" };
+```
+
+### Mapped Types
+
+```typescript
+// ✅ CORRECT - Use mapped types for transformations
+type EventFormFields = {
+  [K in keyof Event]: Event[K] extends string ? string : Event[K];
+};
+
+type OptionalEventFields = {
+  [K in keyof Event]?: Event[K];
+};
+```
+
+### Template Literal Types
+
+```typescript
+// ✅ CORRECT - Use template literal types for string patterns
+type TimeFormat = `${number}:${number}`;
+type DateFormat = `${number}-${number}-${number}`;
+
+// Validate time format
+const isValidTime = (time: string): time is TimeFormat => {
+  return /^\d{1,2}:\d{2}$/.test(time);
+};
+```
+
+## 🔍 TYPE DEBUGGING
+
+### Type Inspection
+
+```typescript
+// ✅ CORRECT - Use type inspection for debugging
+type EventKeys = keyof Event;
+type EventValues = Event[keyof Event];
+
+// ✅ CORRECT - Use typeof for runtime types
+const eventType = typeof eventData;
+if (eventType === "object" && eventData !== null) {
+  // Safe to use as object
+}
+```
+
+### Type Assertions (Use Sparingly)
+
+```typescript
+// ✅ CORRECT - Use type assertions only when you're certain
+const event = data as Event; // Only if you're sure data is Event
+
+// ✅ CORRECT - Use type guards instead when possible
+if (isEvent(data)) {
+  const event = data; // TypeScript knows this is Event
+}
+```
+
+description:
+globs:
+alwaysApply: false
+
+---

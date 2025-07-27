@@ -1,0 +1,193 @@
+# Smart Calendar Project Architecture & Coding Standards
+
+## 🏗️ Project Structure
+
+This is a full-stack TypeScript application with React frontend and Node.js/Express backend.
+
+**Frontend Structure:**
+
+- Main entry: [App.tsx](mdc:App.tsx)
+- Components: [components/](mdc:components/) directory
+- Types: [types.ts](mdc:types.ts)
+- Constants: [constants.ts](mdc:constants.ts)
+- API Client: [server/api_axios.ts](mdc:server/api_axios.ts)
+
+**Backend Structure:**
+
+- Server entry: [server/src/index.ts](mdc:server/src/index.ts)
+- Database: [server/prisma/schema.prisma](mdc:server/prisma/schema.prisma)
+- Database client: [server/src/db.ts](mdc:server/src/db.ts)
+
+## 🚨 CRITICAL RULES - MUST FOLLOW
+
+### 1. TypeScript & Type Safety
+
+- **ALWAYS** use TypeScript interfaces for all component props
+- **ALWAYS** define explicit return types for async functions
+- **NEVER** use `any` type - use proper typing or `unknown`
+- **ALWAYS** use the existing types from [types.ts](mdc:types.ts)
+
+### 2. Component Architecture
+
+- **ALWAYS** use PascalCase for component names and files
+- **ALWAYS** define Props interface as `ComponentNameProps`
+- **ALWAYS** include `isOpen: boolean` and `onClose: () => void` for modal components
+- **NEVER** create components without proper TypeScript interfaces
+
+### 3. State Management
+
+- **ALWAYS** use React Hooks (useState, useCallback, useMemo)
+- **ALWAYS** use `useCallback` for event handlers passed as props
+- **ALWAYS** use `useMemo` for expensive calculations
+- **NEVER** mutate state directly - always use setter functions
+
+### 4. API Patterns
+
+- **ALWAYS** prefix API functions with `api` (e.g., `apiGetEvents`)
+- **ALWAYS** use async/await pattern
+- **ALWAYS** handle errors with try/catch blocks
+- **ALWAYS** return proper TypeScript types from API functions
+
+### 5. Styling Standards
+
+- **ALWAYS** use Tailwind CSS classes
+- **ALWAYS** follow the established color system:
+  - Primary: `bg-primary`, `text-primary`
+  - Gray scale: `text-gray-900`, `text-gray-700`, `text-gray-500`
+  - Danger: `text-red-600`, `hover:bg-red-50`
+- **NEVER** use inline styles
+- **NEVER** create custom CSS files
+
+## 🎯 NAMING CONVENTIONS
+
+### Files & Directories
+
+```
+components/EventModal.tsx          # PascalCase for components
+hooks/useLocalStorage.ts           # camelCase for hooks
+server/api_axios.ts               # snake_case for utilities
+```
+
+### Variables & Functions
+
+```typescript
+// State variables
+const [events, setEvents] = useState<Event[]>([]);
+const [isModalOpen, setIsModalOpen] = useState(false);
+
+// Event handlers
+const handleSaveEvent = useCallback(async (event: Event) => {}, []);
+const handleDeleteEvent = useCallback(async (eventId: string) => {}, []);
+
+// API functions
+export const apiGetEvents = async (): Promise<Event[]> => {};
+export const apiSaveEvent = async (event: Event, isNew: boolean): Promise<Event> => {};
+```
+
+## 🎨 UI/UX PATTERNS
+
+### Modal Components
+
+**ALWAYS** use this structure:
+
+```typescript
+interface ComponentNameProps {
+  isOpen: boolean;
+  onClose: () => void;
+  // ... other props
+}
+
+export const ComponentName: React.FC<ComponentNameProps> = ({ isOpen, onClose, ... }) => {
+  if (!isOpen) return null;
+
+  return (
+    <Dialog isOpen={isOpen} onClose={onClose} title="Title">
+      {/* content */}
+    </Dialog>
+  );
+};
+```
+
+### Button Patterns
+
+```typescript
+// Primary action
+className = "px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90";
+
+// Secondary action
+className = "px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100";
+
+// Danger action
+className =
+  "px-4 py-2 text-sm font-medium text-red-600 bg-transparent rounded-lg hover:bg-red-50 focus:ring-2 focus:ring-red-500";
+```
+
+## 🔒 SECURITY & AUTHENTICATION
+
+### Authentication Rules
+
+- **ALWAYS** check `currentUser` before performing protected actions
+- **ALWAYS** use the `ensureAuthenticated` middleware for protected routes
+- **NEVER** expose sensitive data in client-side code
+- **ALWAYS** validate user permissions on both frontend and backend
+
+### Error Handling
+
+- **ALWAYS** use try/catch blocks for async operations
+- **ALWAYS** log errors with `console.error`
+- **ALWAYS** show user-friendly error messages
+- **NEVER** expose internal error details to users
+
+## 📊 DATABASE PATTERNS
+
+### Prisma Usage
+
+- **ALWAYS** use Prisma Client for database operations
+- **ALWAYS** include proper relations in queries
+- **ALWAYS** use transactions for multiple operations
+- **NEVER** use raw SQL queries
+
+### Data Validation
+
+- **ALWAYS** validate input data on both frontend and backend
+- **ALWAYS** check user ownership before modifying data
+- **ALWAYS** use proper error status codes (400, 401, 403, 404, 500)
+
+## 🚫 FORBIDDEN PATTERNS
+
+### What NOT to do:
+
+- ❌ Don't use `any` type
+- ❌ Don't mutate state directly
+- ❌ Don't create components without TypeScript interfaces
+- ❌ Don't use inline styles
+- ❌ Don't skip error handling
+- ❌ Don't bypass authentication checks
+- ❌ Don't use raw SQL queries
+- ❌ Don't create duplicate API functions
+- ❌ Don't use non-standard naming conventions
+- ❌ Don't ignore TypeScript errors
+
+## 🔧 DEVELOPMENT WORKFLOW
+
+### Before Making Changes:
+
+1. Check existing patterns in similar components
+2. Follow the established naming conventions
+3. Use the existing type definitions
+4. Follow the established styling patterns
+
+### Code Review Checklist:
+
+- [ ] TypeScript interfaces defined
+- [ ] Proper error handling
+- [ ] Authentication checks included
+- [ ] Tailwind CSS classes used
+- [ ] Naming conventions followed
+- [ ] No `any` types used
+- [ ] Proper state management patterns
+      description:
+      globs:
+      alwaysApply: false
+
+---

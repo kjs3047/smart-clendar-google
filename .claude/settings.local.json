@@ -1,0 +1,10 @@
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "taskmaster-ai",
+    "context7",
+    "sequential",
+    "magic",
+    "playwright"
+  ]
+}
