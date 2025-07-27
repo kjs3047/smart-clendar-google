@@ -62,9 +62,10 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ eve
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ eventId: string }> }) {
   return withAuth(request, async (req: AuthenticatedRequest) => {
+    let eventId: string = '';
     try {
       const params = await context.params;
-      const { eventId } = params;
+      eventId = params.eventId;
       const result = await prisma.event.deleteMany({ where: { id: eventId, userId: req.userId } });
       if (result.count === 0) {
         return NextResponse.json(
@@ -80,7 +81,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack trace',
         userId: req.userId,
-        eventId: params.eventId
+        eventId: eventId
       });
       return NextResponse.json({ 
         message: 'Failed to delete event',
