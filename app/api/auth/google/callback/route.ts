@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { oauth2Client, createSessionCookie, getSessionFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { createDefaultCategoriesForUser, hasExistingCategories } from '@/lib/defaultCategories';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -28,6 +29,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${redirectUrl}?error=auth_failed&message=Failed_to_get_user_profile`);
     }
 
+    // 기존 사용자인지 확인
+    const existingUser = await prisma.user.findUnique({
+      where: { googleId: payload.sub }
+    });
+    
+    const isNewUser = !existingUser;
+
     const user = await prisma.user.upsert({
       where: { googleId: payload.sub },
       update: {
@@ -43,6 +51,20 @@ export async function GET(request: NextRequest) {
         avatarUrl: payload.picture,
       },
     });
+
+    // 새 사용자인 경우 기본 카테고리 생성
+    if (isNewUser) {
+      try {
+        const hasCategories = await hasExistingCategories(user.id);
+        if (!hasCategories) {
+          await createDefaultCategoriesForUser(user.id);
+          console.log(`Default categories created for new user: ${user.email}`);
+        }
+      } catch (error) {
+        console.error('Failed to create default categories for new user:', error);
+        // 기본 카테고리 생성 실패해도 로그인은 계속 진행
+      }
+    }
 
     // Update session with user ID
     sessionData.userId = user.id;

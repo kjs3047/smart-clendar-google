@@ -16,16 +16,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/auth/user/route.js"
     ],
-    "/api/auth/google/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/auth/google/route.js"
-    ],
-    "/api/auth/google/callback/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/auth/google/callback/route.js"
-    ],
     "/api/v1/events/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -41,10 +31,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/v1/task-templates/route.js"
     ],
-    "/api/v1/events/[eventId]/tasks/route": [
+    "/api/auth/logout/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/v1/events/[eventId]/tasks/route.js"
+      "static/chunks/app/api/auth/logout/route.js"
+    ],
+    "/api/auth/google/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/google/route.js"
+    ],
+    "/api/auth/google/callback/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/google/callback/route.js"
     ]
   }
 }

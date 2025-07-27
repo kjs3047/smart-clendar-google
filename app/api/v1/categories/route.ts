@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 import { prisma } from '@/lib/db';
-import { DEFAULT_CATEGORIES } from '@/lib/constants';
 import { Category } from '@/types';
+import { createDefaultCategoriesForUser } from '@/lib/defaultCategories';
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (req: AuthenticatedRequest) => {
@@ -13,30 +13,18 @@ export async function GET(request: NextRequest) {
     });
 
     if (categories.length === 0) {
-      await prisma.$transaction(
-        DEFAULT_CATEGORIES.map((cat) =>
-          prisma.category.create({
-            data: {
-              id: cat.id,
-              name: cat.name,
-              color: cat.color,
-              userId: req.userId,
-              subCategories: {
-                create: cat.subCategories.map((sub) => ({
-                  id: sub.id,
-                  name: sub.name,
-                })),
-              },
-            },
-          })
-        )
-      );
-      const newCategories = await prisma.category.findMany({
-        where: { userId: req.userId },
-        include: { subCategories: true },
-        orderBy: { name: 'asc' },
-      });
-      return NextResponse.json(newCategories);
+      try {
+        await createDefaultCategoriesForUser(req.userId);
+        const newCategories = await prisma.category.findMany({
+          where: { userId: req.userId },
+          include: { subCategories: true },
+          orderBy: { name: 'asc' },
+        });
+        return NextResponse.json(newCategories);
+      } catch (error) {
+        console.error('Failed to create default categories:', error);
+        return NextResponse.json({ message: 'Failed to create default categories' }, { status: 500 });
+      }
     }
     return NextResponse.json(categories);
   });
