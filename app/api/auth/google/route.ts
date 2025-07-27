@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { oauth2Client, createSessionCookie, getSessionFromRequest, SessionData } from '@/lib/auth';
+import { oauth2Client, createSessionCookie, SessionData } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   // Store the frontend's origin from the Referer header to redirect back to it later
