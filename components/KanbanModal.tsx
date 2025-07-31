@@ -139,9 +139,15 @@ export const KanbanModal: React.FC<KanbanModalProps> = ({ isOpen, onClose, event
 
   const columns: TaskStatus[] = [TaskStatus.ToDo, TaskStatus.InProgress, TaskStatus.Done];
 
+  // Format date for display (YYYY-MM-DD → YYYY년 M월 D일)
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+  };
+
   return (
     <>
-    <Dialog isOpen={isOpen} onClose={onClose} title={`칸반 보드: ${event.title}`} widthClass="sm:max-w-4xl lg:max-w-6xl">
+    <Dialog isOpen={isOpen} onClose={onClose} title={event.title} widthClass="sm:max-w-4xl lg:max-w-6xl">
       <div className="space-y-4">
         {/* Add new task input */}
         <div className="flex gap-2">
@@ -188,6 +194,16 @@ export const KanbanModal: React.FC<KanbanModalProps> = ({ isOpen, onClose, event
             />
           ))}
         </div>
+        
+        {/* Event Information */}
+        <div className="p-3 bg-gray-50 rounded-lg text-center border-t">
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">{formatDate(event.date)}</span>
+            <span className="mx-2">•</span>
+            <span>{event.startTime} - {event.endTime}</span>
+          </div>
+        </div>
+        
         <div className="flex justify-between items-center pt-4 mt-4 border-t">
            <button onClick={handleDelete} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-transparent rounded-lg hover:bg-red-50 focus:z-10 focus:ring-2 focus:ring-red-500">
                 <Trash2 className="w-4 h-4" />
